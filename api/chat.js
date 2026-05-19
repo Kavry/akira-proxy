@@ -4,10 +4,15 @@ app.use(express.json());
 
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
   next();
+});
+
+app.get('/debug', (req, res) => {
+  const key = process.env.ANTHROPIC_API_KEY || 'NON TROVATA';
+  res.json({ key_length: key.length, key_start: key.substring(0, 10) });
 });
 
 app.post('/api/chat', async (req, res) => {
