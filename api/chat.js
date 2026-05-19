@@ -21,20 +21,18 @@ app.post('/api/chat', async (req, res) => {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        mod
-cat > package.json << 'EOF'
-{
-  "name": "akira-proxy",
-  "version": "1.0.0",
-  "private": true,
-  "main": "api/chat.js",
-  "scripts": {
-    "start": "node api/chat.js"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: system || '',
+        messages
+      })
+    });
+    const data = await response.json();
+    return res.status(200).json(data);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
-}
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log('AKIRA proxy running on port ' + PORT));
