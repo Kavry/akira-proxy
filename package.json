@@ -1,1 +1,1 @@
-{"name":"akira-proxy","version":"1.0.0","private":true,"engines":{"node":">=18"}}
+{"name":"akira-proxy","version":"1.0.0","private":true,"engines":{"node":">=18"},"dependencies":{"express":"^5.2.1"}}
