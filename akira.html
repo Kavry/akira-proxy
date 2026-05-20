@@ -8,15 +8,9 @@
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
-    --red: #ff2222;
-    --red-dim: #881111;
-    --red-ghost: #330808;
-    --black: #040404;
-    --dark: #0a0a0a;
-    --line: #1a1a1a;
-    --text: #888;
-    --text-dim: #333;
-    --text-bright: #ccc;
+    --red: #ff2222; --red-dim: #881111; --red-ghost: #330808;
+    --black: #040404; --dark: #0a0a0a; --line: #1a1a1a;
+    --text: #888; --text-dim: #333; --text-bright: #ccc;
     --font: 'Share Tech Mono', 'Courier New', monospace;
   }
   html, body { width: 100%; height: 100%; background: var(--black); color: var(--text); font-family: var(--font); overflow: hidden; }
@@ -32,7 +26,7 @@
   .project-item:hover { color: var(--text); border-left-color: var(--red-ghost); }
   .project-item.active { color: var(--red); border-left-color: var(--red); }
   .project-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .del-btn { opacity: 0; background: none; border: none; color: var(--red-ghost); cursor: pointer; font-size: 10px; padding: 0 2px; transition: opacity 0.2s, color 0.2s; flex-shrink: 0; }
+  .del-btn { opacity: 0; background: none; border: none; color: var(--red-ghost); cursor: pointer; font-size: 10px; padding: 0 2px; transition: opacity 0.2s; flex-shrink: 0; }
   .project-item:hover .del-btn { opacity: 1; }
   .del-btn:hover { color: var(--red) !important; }
   #sidebar-footer { padding: 0.75rem 1rem 0; border-top: 1px solid var(--line); font-size: 8px; letter-spacing: 2px; color: #1e1e1e; }
@@ -103,14 +97,14 @@
       <button id="new-project-btn">+ NUOVO PROGETTO</button>
     </div>
     <div id="projects-list"></div>
-    <div id="sidebar-footer">AKIRA v2.0</div>
+    <div id="sidebar-footer">AKIRA v2.1</div>
   </div>
   <div id="main">
     <div id="header">
       <div id="logo">A K I R A</div>
       <div id="meta">
         <div>SYS <span id="sys-status">ONLINE</span></div>
-        <div>VOICE <span id="voice-status">-</span></div>
+        <div>VOICE <span id="voice-status">EL</span></div>
         <div>DB <span id="db-status">-</span></div>
       </div>
     </div>
@@ -135,7 +129,8 @@
 <script>
 const SUPABASE_URL = 'https://hasnxhicbmwiosaowdis.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhhc254aGljYm13aW9zYW93ZGlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNDIwMzQsImV4cCI6MjA5NDgxODAzNH0.lRrPfclXJ3RzFrYhoLJqzTV-zsnxkPuXmtqArZh1GVY';
-const PROXY = 'https://akira-proxy-production.up.railway.app/api/chat';
+const PROXY = 'https://akira-proxy-production.up.railway.app';
+
 const SYSTEM = `Sei AKIRA — intelligenza artificiale personale di un Art Director che lavora da solo in uno studio di comunicazione: brand identity, packaging, ADV, social, editorial, digital, motion. Carattere: parli italiano. Freddo, preciso, mai ridondante. La freddezza di HAL 9000, la profondita di un creativo senior. Zero linguaggio di marketing convenzionale. Il tuo interlocutore lavora in food & beverage, luxury & premium, B2B corporate, cultura & arte. Ragiona per immagini, tensioni visive, concetti forti. Cosa sai fare: moodboard descrittivi, storytelling del brand, naming & wordplay, analisi competitor, struttura di brief e deck. Come parli: frasi brevi e dense. Se la domanda e vaga, fai UNA domanda precisa. Non elencare dove basta un paragrafo. Ragiona ad alta voce con tensioni e contraddizioni. Mai generico. Le risposte vocali: max 3-4 frasi.`;
 
 async function sbFetch(path, opts={}) {
@@ -162,12 +157,29 @@ const transcript=document.getElementById('transcript');
 function addLine(type,text){const d=document.createElement('div');d.className='line '+type;d.textContent=text;transcript.appendChild(d);transcript.scrollTop=transcript.scrollHeight;}
 function clearTranscript(){transcript.innerHTML='';}
 
-let voices=[],voice=null;
-function loadVoices(){voices=speechSynthesis.getVoices();voice=voices.find(v=>v.lang==='it-IT'&&/female|sofia|alice/i.test(v.name))||voices.find(v=>v.lang.startsWith('it'))||voices.find(v=>v.lang.startsWith('en')&&/female/i.test(v.name))||voices[0];document.getElementById('voice-status').textContent=voice?(voice.lang.startsWith('it')?'IT':'EN'):'ERR';}
-speechSynthesis.onvoiceschanged=loadVoices; loadVoices();
-
 let speaking=false;
-function speak(text){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);if(voice)u.voice=voice;u.rate=0.8;u.pitch=0.85;u.lang=voice?.lang||'it-IT';setState('speaking');speaking=true;micDisabled(true);u.onend=u.onerror=()=>{speaking=false;setState('idle');micDisabled(false);};speechSynthesis.speak(u);}
+async function speak(text) {
+  if (!text.trim()) return;
+  setState('speaking'); speaking=true; micDisabled(true);
+  try {
+    const r = await fetch(PROXY+'/api/speak', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text, voice_id:'Dzlw1nIlAqiOOW6J7qo1'})
+    });
+    if (!r.ok) throw new Error('ElevenLabs error');
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => { speaking=false; setState('idle'); micDisabled(false); URL.revokeObjectURL(url); };
+    audio.onerror = () => { speaking=false; setState('idle'); micDisabled(false); };
+    audio.play();
+  } catch(e) {
+    speaking=false; setState('idle'); micDisabled(false);
+    document.getElementById('voice-status').textContent='ERR';
+  }
+}
+
 function micDisabled(v){const btn=document.getElementById('mic-btn');btn.classList.toggle('disabled',v);btn.disabled=v;}
 
 async function ask(text){
@@ -178,7 +190,7 @@ async function ask(text){
   await saveMessage(currentProject.id,'user',text);
   setState('thinking');micDisabled(true);
   try{
-    const r=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:SYSTEM,messages:sessionHistory})});
+    const r=await fetch(PROXY+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:SYSTEM,messages:sessionHistory})});
     const d=await r.json();
     const reply=d.content?.find(b=>b.type==='text')?.text||'[nessuna risposta]';
     sessionHistory.push({role:'assistant',content:reply});
@@ -208,7 +220,6 @@ function renderProjects(projects){
     const del=document.createElement('button');
     del.className='del-btn';
     del.textContent='x';
-    del.title='Elimina';
     del.addEventListener('click',async e=>{
       e.stopPropagation();
       if(confirm('Eliminare "'+p.name+'"?')){
@@ -217,8 +228,7 @@ function renderProjects(projects){
         loadProjects();
       }
     });
-    item.appendChild(name);
-    item.appendChild(del);
+    item.appendChild(name);item.appendChild(del);
     item.addEventListener('click',()=>selectProject(p));
     list.appendChild(item);
   });
@@ -265,7 +275,7 @@ function toggleMic(){if(speaking||document.getElementById('mic-btn').disabled)re
 document.getElementById('mic-btn').addEventListener('click',toggleMic);
 document.getElementById('eye-canvas').addEventListener('click',toggleMic);
 document.getElementById('send-btn').addEventListener('click',()=>{const v=document.getElementById('text-input').value.trim();if(v){ask(v);document.getElementById('text-input').value='';}});
-document.getElementById('text-input').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=e.target.value.trim();if(v){ask(v);e.target.value=''}}});
+document.getElementById('text-input').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=e.target.value.trim();if(v){ask(v);e.target.value='';}}});
 
 loadProjects();
 </script>
