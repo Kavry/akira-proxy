@@ -77,3 +77,4 @@ app.post('/api/speak', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('AKIRA proxy running on port ' + PORT));
+// v2.1
