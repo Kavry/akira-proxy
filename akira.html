@@ -29,7 +29,10 @@
   .del-btn { opacity: 0; background: none; border: none; color: var(--red-ghost); cursor: pointer; font-size: 10px; padding: 0 2px; transition: opacity 0.2s; flex-shrink: 0; }
   .project-item:hover .del-btn { opacity: 1; }
   .del-btn:hover { color: var(--red) !important; }
-  #sidebar-footer { padding: 0.75rem 1rem 0; border-top: 1px solid var(--line); font-size: 8px; letter-spacing: 2px; color: #1e1e1e; }
+  #sidebar-footer { padding: 0.75rem 1rem 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 0.5rem; }
+  #sidebar-footer .version { font-size: 8px; letter-spacing: 2px; color: #1e1e1e; }
+  #voice-key-btn { background: transparent; border: 1px solid var(--line); color: var(--text-dim); font-family: var(--font); font-size: 8px; letter-spacing: 1px; padding: 5px; cursor: pointer; transition: all 0.2s; text-align: left; }
+  #voice-key-btn:hover { border-color: var(--red-ghost); color: var(--text); }
   #main { flex: 1; display: grid; grid-template-rows: auto 1fr auto auto; padding: 1.5rem; gap: 0; min-width: 0; }
   #header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid var(--line); margin-bottom: 1rem; }
   #logo { font-size: 13px; letter-spacing: 8px; color: var(--red); text-shadow: 0 0 20px rgba(255,34,34,0.3); }
@@ -82,8 +85,8 @@
 <div id="scanlines"></div>
 <div id="modal-overlay">
   <div id="modal">
-    <h2>NUOVO PROGETTO</h2>
-    <input type="text" id="modal-input" placeholder="NOME CLIENTE / PROGETTO..." maxlength="50" />
+    <h2 id="modal-title">NUOVO PROGETTO</h2>
+    <input type="text" id="modal-input" placeholder="NOME CLIENTE / PROGETTO..." maxlength="100" />
     <div id="modal-actions">
       <button id="modal-confirm">CREA</button>
       <button id="modal-cancel">ANNULLA</button>
@@ -97,14 +100,17 @@
       <button id="new-project-btn">+ NUOVO PROGETTO</button>
     </div>
     <div id="projects-list"></div>
-    <div id="sidebar-footer">AKIRA v2.1</div>
+    <div id="sidebar-footer">
+      <button id="voice-key-btn">VOICE KEY</button>
+      <div class="version">AKIRA v2.2</div>
+    </div>
   </div>
   <div id="main">
     <div id="header">
       <div id="logo">A K I R A</div>
       <div id="meta">
         <div>SYS <span id="sys-status">ONLINE</span></div>
-        <div>VOICE <span id="voice-status">EL</span></div>
+        <div>VOICE <span id="voice-status">-</span></div>
         <div>DB <span id="db-status">-</span></div>
       </div>
     </div>
@@ -130,9 +136,34 @@
 const SUPABASE_URL = 'https://hasnxhicbmwiosaowdis.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhhc254aGljYm13aW9zYW93ZGlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNDIwMzQsImV4cCI6MjA5NDgxODAzNH0.lRrPfclXJ3RzFrYhoLJqzTV-zsnxkPuXmtqArZh1GVY';
 const PROXY = 'https://akira-proxy-production.up.railway.app';
+const VOICE_ID = 'Dzlw1nIlAqiOOW6J7qo1';
 
 const SYSTEM = `Sei AKIRA — intelligenza artificiale personale di un Art Director che lavora da solo in uno studio di comunicazione: brand identity, packaging, ADV, social, editorial, digital, motion. Carattere: parli italiano. Freddo, preciso, mai ridondante. La freddezza di HAL 9000, la profondita di un creativo senior. Zero linguaggio di marketing convenzionale. Il tuo interlocutore lavora in food & beverage, luxury & premium, B2B corporate, cultura & arte. Ragiona per immagini, tensioni visive, concetti forti. Cosa sai fare: moodboard descrittivi, storytelling del brand, naming & wordplay, analisi competitor, struttura di brief e deck. Come parli: frasi brevi e dense. Se la domanda e vaga, fai UNA domanda precisa. Non elencare dove basta un paragrafo. Ragiona ad alta voce con tensioni e contraddizioni. Mai generico. Le risposte vocali: max 3-4 frasi.`;
 
+// ELEVENLABS KEY - stored in localStorage
+function getElKey() { return localStorage.getItem('akira_el_key') || ''; }
+function setElKey(k) { localStorage.setItem('akira_el_key', k); updateVoiceStatus(); }
+
+function updateVoiceStatus() {
+  document.getElementById('voice-status').textContent = getElKey() ? 'EL' : 'OFF';
+  document.getElementById('voice-key-btn').textContent = getElKey() ? 'VOICE KEY OK' : 'VOICE KEY';
+}
+
+// VOICE KEY MODAL
+let modalMode = 'project';
+document.getElementById('voice-key-btn').addEventListener('click', () => {
+  modalMode = 'voicekey';
+  document.getElementById('modal-title').textContent = 'ELEVENLABS API KEY';
+  document.getElementById('modal-input').placeholder = 'INCOLLA LA TUA API KEY...';
+  document.getElementById('modal-input').type = 'password';
+  document.getElementById('modal-input').maxLength = 100;
+  document.getElementById('modal-input').value = getElKey();
+  document.getElementById('modal-confirm').textContent = 'SALVA';
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('modal-input').focus(), 50);
+});
+
+// SUPABASE
 async function sbFetch(path, opts={}) {
   const r = await fetch(SUPABASE_URL+path, {...opts, headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation',...(opts.headers||{})}});
   return r.json();
@@ -146,6 +177,7 @@ const touchProject = id => sbFetch(`/rest/v1/projects?id=eq.${id}`,{method:'PATC
 
 let currentProject=null, sessionHistory=[];
 
+// EYE
 const canvas=document.getElementById('eye-canvas'), ctx=canvas.getContext('2d');
 const SZ=25,PX=7; let pt=0,eyeState='idle';
 function drawEye(p){ctx.clearRect(0,0,canvas.width,canvas.height);const cx=Math.floor(SZ/2),cy=Math.floor(SZ/2);const rings=[{r:0,a:1},{r:1,a:.95},{r:3,a:.85},{r:5,a:.55},{r:7,a:.3},{r:9,a:.15},{r:11,a:.07}];for(let y=0;y<SZ;y++){for(let x=0;x<SZ;x++){const dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);let alpha=0;for(const ring of rings){if(ring.r===0&&d<1){alpha=ring.a*p;break;}if(ring.r>0&&Math.abs(d-ring.r)<0.7){alpha=ring.a*p;break;}}if(alpha>0.01){const g=eyeState==='speaking'?8:25;ctx.fillStyle=`rgba(255,${g},${g},${alpha})`;ctx.fillRect(x*PX,y*PX,PX,PX);}}}}
@@ -153,21 +185,29 @@ function animate(){pt+=0.022;let p=1;if(eyeState==='idle')p=0.4+0.13*Math.sin(pt
 animate();
 function setState(s){eyeState=s;const el=document.getElementById('state-label');const labels={idle:'IN ATTESA',listening:'IN ASCOLTO',thinking:'ELABORAZIONE',speaking:'AKIRA PARLA'};el.textContent=labels[s]||s;el.className=s==='idle'?'':s;}
 
+// TRANSCRIPT
 const transcript=document.getElementById('transcript');
 function addLine(type,text){const d=document.createElement('div');d.className='line '+type;d.textContent=text;transcript.appendChild(d);transcript.scrollTop=transcript.scrollHeight;}
 function clearTranscript(){transcript.innerHTML='';}
 
+// TTS - ElevenLabs direct from browser
 let speaking=false;
 async function speak(text) {
   if (!text.trim()) return;
+  const key = getElKey();
+  if (!key) { setState('idle'); return; }
   setState('speaking'); speaking=true; micDisabled(true);
   try {
-    const r = await fetch(PROXY+'/api/speak', {
+    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({text, voice_id:'Dzlw1nIlAqiOOW6J7qo1'})
+      headers:{ 'Content-Type':'application/json', 'xi-api-key': key },
+      body: JSON.stringify({
+        text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: { stability: 0.45, similarity_boost: 0.82, style: 0.3, use_speaker_boost: true }
+      })
     });
-    if (!r.ok) throw new Error('ElevenLabs error');
+    if (!r.ok) throw new Error('EL error ' + r.status);
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
@@ -177,11 +217,13 @@ async function speak(text) {
   } catch(e) {
     speaking=false; setState('idle'); micDisabled(false);
     document.getElementById('voice-status').textContent='ERR';
+    console.error('TTS error:', e);
   }
 }
 
 function micDisabled(v){const btn=document.getElementById('mic-btn');btn.classList.toggle('disabled',v);btn.disabled=v;}
 
+// CHAT
 async function ask(text){
   if(!text.trim())return;
   if(!currentProject){addLine('akira','Seleziona un progetto per iniziare.');return;}
@@ -202,6 +244,7 @@ async function ask(text){
   }catch(e){setState('idle');micDisabled(false);document.getElementById('db-status').textContent='ERR';addLine('akira','Errore di connessione.');}
 }
 
+// PROJECTS
 async function loadProjects(){
   const projects=await getProjects();
   document.getElementById('db-status').textContent=Array.isArray(projects)?'OK':'ERR';
@@ -244,14 +287,31 @@ async function selectProject(p){
   loadProjects();
 }
 
-function openModal(){document.getElementById('modal-overlay').classList.add('open');document.getElementById('modal-input').value='';setTimeout(()=>document.getElementById('modal-input').focus(),50);}
+// MODAL
+function openProjectModal(){
+  modalMode='project';
+  document.getElementById('modal-title').textContent='NUOVO PROGETTO';
+  document.getElementById('modal-input').placeholder='NOME CLIENTE / PROGETTO...';
+  document.getElementById('modal-input').type='text';
+  document.getElementById('modal-input').maxLength=50;
+  document.getElementById('modal-input').value='';
+  document.getElementById('modal-confirm').textContent='CREA';
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('modal-input').focus(),50);
+}
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
-document.getElementById('new-project-btn').addEventListener('click',openModal);
+
+document.getElementById('new-project-btn').addEventListener('click',openProjectModal);
 document.getElementById('modal-cancel').addEventListener('click',closeModal);
 document.getElementById('modal-confirm').addEventListener('click',async()=>{
-  const name=document.getElementById('modal-input').value.trim();
-  if(!name)return;
-  const r=await createProject(name);
+  const val=document.getElementById('modal-input').value.trim();
+  if(!val)return;
+  if(modalMode==='voicekey'){
+    setElKey(val);
+    closeModal();
+    return;
+  }
+  const r=await createProject(val);
   const p=Array.isArray(r)?r[0]:r;
   closeModal();await loadProjects();
   if(p?.id)selectProject(p);
@@ -259,6 +319,7 @@ document.getElementById('modal-confirm').addEventListener('click',async()=>{
 document.getElementById('modal-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('modal-confirm').click();if(e.key==='Escape')closeModal();});
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
 
+// MIC
 let recognition=null,listening=false;
 function startRec(){
   if(speaking||!currentProject)return;
@@ -277,7 +338,12 @@ document.getElementById('eye-canvas').addEventListener('click',toggleMic);
 document.getElementById('send-btn').addEventListener('click',()=>{const v=document.getElementById('text-input').value.trim();if(v){ask(v);document.getElementById('text-input').value='';}});
 document.getElementById('text-input').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=e.target.value.trim();if(v){ask(v);e.target.value='';}}});
 
+// INIT
+updateVoiceStatus();
 loadProjects();
+if(!getElKey()){
+  setTimeout(()=>{ addLine('akira','Clicca VOICE KEY nella sidebar per attivare la voce.'); },500);
+}
 </script>
 </body>
 </html>
